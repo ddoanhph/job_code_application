@@ -6,7 +6,6 @@ import io
 # Set the title and favicon that appear in the Browser's tab
 st.set_page_config(
     page_title='Job Code Application',
-    page_icon='logo.jpg'  # Assuming logo.png is the favicon for the browser tab
 )
 
 # -----------------------------------------------------------------------------
@@ -53,7 +52,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # Display logo at the top
-st.image("logo.jpg", width=200)  # Adjust the logo size as needed
+st.image("logo.jpg")  # Adjust the logo size as needed
 
 # Footer text
 st.markdown(
