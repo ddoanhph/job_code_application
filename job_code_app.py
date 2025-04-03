@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from foundry.transforms import Dataset
+#from foundry.transforms import Dataset
 import os
 
 # Constants
@@ -104,8 +104,8 @@ def add_to_database():
         st.session_state.df = pd.concat([st.session_state.df, pd.DataFrame([new_row])], ignore_index=True)
         
         # Write to dataset
-        job_codes_dataset = Dataset.get("job_codes___us_local_job_catalogue_job_code")
-        job_codes_dataset.write_table(st.session_state.df)
+        # job_codes_dataset = Dataset.get("job_codes___us_local_job_catalogue_job_code")
+        # job_codes_dataset.write_table(st.session_state.df)
         
         st.success(f"✅ Successfully added '{st.session_state.job_code} - {st.session_state.job_title}'")
         st.balloons()
