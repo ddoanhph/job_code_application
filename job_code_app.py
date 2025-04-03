@@ -1,195 +1,162 @@
 import streamlit as st
 import pandas as pd
-from pathlib import Path
-import io
+import plotly.express as px
+from foundry.transforms import Dataset
+import os
 
-# Set the title and favicon that appear in the Browser's tab
-st.set_page_config(
-    page_title='Job Code Application',
-)
-
-# -----------------------------------------------------------------------------
-# Declare some useful functions.
-
-@st.cache_data
-def get_job_code_data():
-    DATA_FILENAME = Path(__file__).parent/'data/Combined_Job_Code.csv'
-    raw_job_code_df = pd.read_csv(DATA_FILENAME)
-    return raw_job_code_df
-
-df = get_job_code_data()
-
-# -----------------------------------------------------------------------------
-# Draw the actual page
-
-# Set the title that appears at the top of the page.
+# Constants
 PRIMARY_COLOR = "#00205B"
 SECONDARY_COLOR = "#A5A5A5"
 SUCCESS_COLOR = "#0073E6"
 WARNING_COLOR = "#FF6A00"
 BACKGROUND_COLOR = "#FFFFFF"
 
+# CSS Styling
 st.markdown(f"""
     <style>
-    .stApp {{background-color: {BACKGROUND_COLOR};}}    
-    h1, h2, h3, h4, h5, h6 {{color: {PRIMARY_COLOR};}}
+    .stApp {{background-color: {BACKGROUND_COLOR};}}
+    h1, h2 {{color: {PRIMARY_COLOR};}}
     .stButton>button {{
         background-color: {PRIMARY_COLOR};
         color: white;
         border-radius: 8px;
+        padding: 8px 16px;
     }}
-    .stButton>button:hover {{background-color: {SUCCESS_COLOR}; color: white;}}
-    .st-alert-success {{color: {SUCCESS_COLOR};}}
-    .st-alert-warning {{color: {WARNING_COLOR};}}
-    input[type="text"] {{
-        background-color: #FFFFFF;
-        border: 1px solid {SECONDARY_COLOR};
-        padding: 8px;
-        border-radius: 4px;
-    }}
-    .sidebar.sidebar-content {{background-color: {BACKGROUND_COLOR};}}
+    .stButton>button:hover {{background-color: {SUCCESS_COLOR};}}
     </style>
 """, unsafe_allow_html=True)
 
-# Display logo at the top
-st.image("logo.jpg")  # Adjust the logo size as needed
-
-# Footer text
-st.markdown(
-    f"""
+# Footer
+st.markdown("""
     <style>
-    .footer-left {{
-        position: fixed;
-        left: 10px;
-        bottom: 10px;
-        font-size: 18px;
-        color: #0055A4; 
-        font-family: Arial, sans-serif;
-    }}
-    .footer-right {{
-        position: fixed;
-        right: 10px;
-        bottom: 10px;
-        font-size: 18px;
-        color: #0055A4;  
-        font-family: Arial, sans-serif;
-    }}
+    .footer {position: fixed; bottom: 10px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px;}
+    .footer span {color: #0055A4; font-family: Arial, sans-serif; font-size: 18px;}
     </style>
-    <div class="footer-left">North America HR Digital Team</div>
-    <div class="footer-right">Airbus U.S. Compensation Team</div>
-    """,
-    unsafe_allow_html=True
-)
+    <div class="footer">
+        <span>North America HR Digital Team</span>
+        <span>Airbus U.S. Compensation Team</span>
+    </div>
+""", unsafe_allow_html=True)
 
-if "step" not in st.session_state:
-    st.session_state["step"] = "validate_code"
+# Data Loading
+@st.cache_data
+def load_data():
+    df = pd.read_csv("Combined_Job_Code.csv")
+    df['Job_Codes'] = df['Job_Code'].apply(lambda x: x.split('-')[0].strip())
+    df['Job_Title'] = df['Job_Code'].apply(lambda x: x.split('-')[1].strip())
+    df['Occurences'] = pd.to_numeric(df['Occurences'], errors='coerce').fillna(0).astype(int)
+    return df[["Job_Code_Group", "Job_Code", "Job_Codes", "Job_Title", "Occurences", 
+              "Proposed_Mapping", "HRBP_Owner", "NEW_PROPOSED_CATEGORY"]]
 
-if "job_code" not in st.session_state:
-    st.session_state["job_code"] = ""
+# Initialize session state
+def init_session_state():
+    defaults = {
+        "step": "validate_code",
+        "job_code": "",
+        "job_title": "",
+        "df": load_data()
+    }
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
 
-if "job_title" not in st.session_state:
-    st.session_state["job_title"] = ""
+init_session_state()
 
-# Function to handle CSV download
-def download_csv(df):
-    csv = df.to_csv(index=False)
-    return csv
-
-# Function to convert CSV to downloadable link
-def create_download_link(csv):
-    b64 = base64.b64encode(csv.encode()).decode()  # B64 encode CSV to create a downloadable link
-    return f'<a href="data:file/csv;base64,{b64}" download="job_codes.csv">Download CSV</a>'
-
-# -----------------------------------------------------------------------------
-# Draw the actual page components
 def validate_job_code():
-    job_code = st.session_state["job_code"]
+    job_code = st.session_state["job_code"].strip()
     if len(job_code) < 3:
-        st.error("❌ Minimum job code length is 3.")
-    elif job_code in df['Job_Code'].values:
-        existing_title = df[df['Job_Code'] == job_code]['Job_Title'].values[0]
-        st.warning(f"⚠️ Job Code '{job_code}' already exists! Existing job title is '{existing_title}'")
-        st.write(df[df['Job_Code'] == job_code])
+        st.error("❌ Job code must be at least 3 characters long")
+        return
+    if job_code in st.session_state.df['Job_Codes'].values:
+        existing_title = st.session_state.df[st.session_state.df['Job_Codes'] == job_code]['Job_Title'].values[0]
+        st.warning(f"⚠️ Job Code '{job_code}' already exists with title '{existing_title}'")
+        st.dataframe(st.session_state.df[st.session_state.df['Job_Codes'] == job_code])
     else:
-        st.success(f"✅ Job Code '{job_code}' is unique. Please enter the job title.")
-        st.session_state["job_code"] = job_code
-        st.session_state["step"] = "validate_title"
+        st.success(f"✅ Job Code '{job_code}' is available")
+        st.session_state.step = "validate_title"
 
 def validate_job_title():
-    job_code = st.session_state.get("job_code", "")
-    job_title = st.session_state["job_title"]
-
-    if job_title.strip().lower() in df['Job_Title'].str.strip().str.lower().values:
-        existing_code = df[df['Job_Title'].str.strip().str.lower() == job_title.strip().lower()]['Job_Code'].tolist()
-        st.warning(f"⚠️ Job Title '{job_title}' already exists with code(s): {existing_code}.")
-        st.write(df[(df['Job_Code'].isin(existing_code)) & (df['Job_Code'] != '')])
+    job_title = st.session_state["job_title"].strip()
+    if not job_title:
+        st.error("❌ Job title cannot be empty")
+        return
+    if job_title.lower() in st.session_state.df['Job_Title'].str.lower().values:
+        existing_codes = st.session_state.df[st.session_state.df['Job_Title'].str.lower() == job_title.lower()]['Job_Codes'].tolist()
+        st.warning(f"⚠️ Job Title '{job_title}' already exists with code(s): {existing_codes}")
+        st.dataframe(st.session_state.df[st.session_state.df['Job_Codes'].isin(existing_codes)])
     else:
-        st.snow()
-        st.success(f"🎉 Job Code '{job_code}' and Job Title '{job_title}' are unique!")
-    st.session_state["job_code"] = job_code
-    st.session_state["job_title"] = job_title
-    st.session_state["step"] = "add_to_db"
+        st.success(f"✅ Job Title '{job_title}' is available")
+        st.session_state.step = "add_to_db"
 
-def add_to_database_with_siglum(job_code, job_title, siglum):
-    new_row = {'Job_Code': job_code, 'Job_Title': job_title, 'Siglum': siglum}
-    global df
-    df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-    # How to add the new job code and job title to the database?
-    # combined_job_code = Dataset.get("combined_job_code")
-    combined_job_code.write_table(df)
-
-    st.success(f"🚀 Added Job Code '{job_code}', Job Title '{job_title}' to the database!")
-    st.balloons()
-    st.write(df.tail())
-
-    # Provide the download link for CSV
-    csv = download_csv(df)
-    st.markdown(create_download_link(csv), unsafe_allow_html=True)
-
-    reset_form()
+def add_to_database():
+    try:
+        new_row = {
+            'Job_Code_Group': 'Unmapped',
+            'Job_Code': f"{st.session_state.job_code} - {st.session_state.job_title}",
+            'Job_Codes': st.session_state.job_code,
+            'Job_Title': st.session_state.job_title,
+            'Occurences': 0,
+            'Proposed_Mapping': '',
+            'HRBP_Owner': '',
+            'NEW_PROPOSED_CATEGORY': ''
+        }
+        
+        st.session_state.df = pd.concat([st.session_state.df, pd.DataFrame([new_row])], ignore_index=True)
+        
+        # Write to dataset
+        job_codes_dataset = Dataset.get("job_codes___us_local_job_catalogue_job_code")
+        job_codes_dataset.write_table(st.session_state.df)
+        
+        st.success(f"✅ Successfully added '{st.session_state.job_code} - {st.session_state.job_title}'")
+        st.balloons()
+        st.dataframe(st.session_state.df.tail())
+        
+        csv = st.session_state.df.to_csv(index=False)
+        st.download_button("Download CSV", csv, "job_codes_database.csv", "text/csv")
+        
+        reset_form()
+    except Exception as e:
+        st.error(f"❌ Error adding to database: {str(e)}")
 
 def reset_form():
-    st.session_state["job_code"] = ""
-    st.session_state["job_title"] = ""
-    st.session_state["step"] = "validate_code"
+    st.session_state.job_code = ""
+    st.session_state.job_title = ""
+    st.session_state.step = "validate_code"
 
-# -----------------------------------------------------------------------------
-if st.session_state["step"] == "validate_code":
-    job_code_input = st.text_input("Enter Job Code", key="job_code", max_chars=6, placeholder="E.g., AAA123",
-                                   help="Start typing to see matching job codes.")
-    matching_codes = df[df['Job_Code'].str.startswith(st.session_state["job_code"], na=False)]['Job_Code'].tolist()
+# Main UI
+st.title("Job Code & Title Validation")
 
-    if st.session_state["job_code"]:
-        st.write("Matching Job Codes:")
-        st.write(matching_codes)
+if st.session_state.step == "validate_code":
+    with st.form("job_code_form"):
+        st.text_input("Job Code", key="job_code", max_chars=6, placeholder="E.g., AAA123")
+        if st.session_state.job_code:
+            matches = st.session_state.df[st.session_state.df['Job_Codes'].str.startswith(st.session_state.job_code, na=False)]['Job_Codes'].tolist()
+            if matches:
+                st.write("Similar codes:", ", ".join(matches))
+        submitted = st.form_submit_button("Validate Job Code")
+        if submitted:
+            validate_job_code()
 
-    st.button("Validate Job Code", on_click=validate_job_code)
+elif st.session_state.step == "validate_title":
+    with st.form("job_title_form"):
+        st.write(f"Job Code: **{st.session_state.job_code}**")
+        st.text_input("Job Title", key="job_title", max_chars=30)
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.form_submit_button("Validate Job Title"):
+                validate_job_title()
+        with col2:
+            if st.form_submit_button("Back"):
+                reset_form()
 
-elif st.session_state["step"] == "validate_title":
-    st.write(f"Job Code: **{st.session_state.get('job_code', '')}**")
-    job_title_input = st.text_input("Enter Job Title", key="job_title", max_chars=30)
-    st.button("Validate Job Title", on_click=validate_job_title)
-
-elif st.session_state["step"] == "add_to_db":
-    # Retrieve job code and title from session state
-    job_code = st.session_state.get("job_code", "")
-    job_title = st.session_state.get("job_title", "")
-
-    st.write(f"Job Code: **{job_code}**")
-    st.write(f"Job Title: **{job_title}**")
-
-    siglum = st.radio(
-        "Select the siglum for this job code and title:",
-        options=["AAI", "AHI"],
-        index=0 if "siglum" not in st.session_state else ["AAI", "AHI"].index(st.session_state["siglum"]),
-        horizontal=True,
-        key="siglum"
-    )
-
-    # Preserve job code and title on siglum update
-    st.session_state["job_code"] = job_code
-    st.session_state["job_title"] = job_title
-
-    if st.button("Add Job Code & Title to Database"):
-        add_to_database_with_siglum(job_code, job_title, siglum)
-    st.button("Reset Form", on_click=reset_form)
+elif st.session_state.step == "add_to_db":
+    with st.form("add_form"):
+        st.write(f"Job Code: **{st.session_state.job_code}**")
+        st.write(f"Job Title: **{st.session_state.job_title}**")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.form_submit_button("Confirm Add to Database"):
+                add_to_database()
+        with col2:
+            if st.form_submit_button("Cancel"):
+                reset_form()
