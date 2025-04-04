@@ -1,5 +1,60 @@
-# ... (previous imports and styling remain unchanged)
+import streamlit as st
+import pandas as pd
+import os
 
+PRIMARY_COLOR = "#00205B"
+SECONDARY_COLOR = "#A5A5A5"
+SUCCESS_COLOR = "#0073E6"
+WARNING_COLOR = "#FF6A00"
+BACKGROUND_COLOR = "#FFFFFF"
+
+st.markdown(f"""
+    <style>
+    .stApp {{background-color: {BACKGROUND_COLOR};}}    
+    h1, h2, h3, h4, h5, h6 {{color: {PRIMARY_COLOR};}}
+    .stButton>button {{
+        background-color: {PRIMARY_COLOR};
+        color: white;
+        border-radius: 8px;
+    }}
+    .stButton>button:hover {{background-color: {SUCCESS_COLOR}; color: white;}}
+    .st-alert-success {{color: {SUCCESS_COLOR};}}
+    .st-alert-warning {{color: {WARNING_COLOR};}}
+    input[type="text"] {{
+        background-color: #FFFFFF;
+        border: 1px solid {SECONDARY_COLOR};
+        padding: 8px;
+        border-radius: 4px;
+    }}
+    .sidebar.sidebar-content {{background-color: {BACKGROUND_COLOR};}}
+    </style>
+""", unsafe_allow_html=True)
+
+st.markdown(
+    f"""
+    <style>
+    .footer-left {{
+        position: fixed;
+        left: 10px;
+        bottom: 10px;
+        font-size: 18px;
+        color: #0055A4; 
+        font-family: Arial, sans-serif;
+    }}
+    .footer-right {{
+        position: fixed;
+        right: 10px;
+        bottom: 10px;
+        font-size: 18px;
+        color: #0055A4;  
+        font-family: Arial, sans-serif;
+    }}
+    </style>
+    <div class="footer-left">North America HR Digital Team</div>
+    <div class="footer-right">Airbus U.S. Compensation Team</div>
+    """,
+    unsafe_allow_html=True
+)
 # Define CSV file path
 DATA_FILE = "Combined_Job_Code.csv"
 
