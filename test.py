@@ -178,4 +178,16 @@ with tab1:
         with col2:
             st.button("Reset Form", on_click=reset_form)
 
-# ... (tab2 for Remove Job Code remains unchanged)
+with tab2:
+    remove_code = st.text_input("Enter Job Code to Remove", 
+                              max_chars=6,
+                              placeholder="E.g., AAA123")
+    if remove_code:
+        matching_codes = df[df['Job_Code'].str.startswith(remove_code, na=False)]['Job_Code'].tolist()
+        st.write("Matching Job Codes:", matching_codes)
+    
+    if st.button("Remove Job Code", key="remove_button"):
+        if remove_code:
+            remove_job_code(remove_code)
+        else:
+            st.error("❌ Please enter a Job Code to remove.")
