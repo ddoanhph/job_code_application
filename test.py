@@ -133,21 +133,21 @@ def add_to_database(job_code, job_title, siglum):
 
 def remove_selected_job_codes():
     global df
-    if 'select' in df.columns:
-        selected_indices = df[df['select']].index
-        if not selected_indices.empty:
-            df.drop(selected_indices, inplace=True)
-            df.drop(columns=['select'], inplace=True)
-            df.reset_index(drop=True, inplace=True)
-            save_data(df)
-            st.success("🗑️ Selected job codes have been removed!")
-        else:
-            st.warning("⚠️ Please select at least one job code to remove.")
+    # Get the rows that are selected
+    selected_df = edited_df[edited_df['select']]
+    if not selected_df.empty:
+        codes_to_remove = selected_df['Job_Code'].tolist()
+        df = df[~df['Job_Code'].isin(codes_to_remove)].reset_index(drop=True)
+        save_data(df)
+        st.success(f"🗑️ Successfully removed the selected job codes: {', '.join(codes_to_remove)}")
     else:
-        st.error("❌ Selection column not found. Please refresh the app.")
+        st.warning("⚠️ Please select at least one row to remove.")
 
-    # Force a re-run to update the displayed dataframe
-    st.rerun()
+    # Remove the 'select' column after processing
+    if 'select' in df.columns:
+        df.drop(columns=['select'], inplace=True)
+        # Force a re-run to update the displayed dataframe
+        st.rerun()
 
 def reset_form():
     for key in ["job_code", "job_title", "validated_job_code", "stored_job_title"]:
