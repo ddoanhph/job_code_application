@@ -131,15 +131,23 @@ def add_to_database(job_code, job_title, siglum):
     st.dataframe(df.tail())
     reset_form()
 
-def remove_job_code(job_code):
+def remove_selected_job_codes():
     global df
-    if job_code in df['Job_Code'].values:
-        df = df[df['Job_Code'] != job_code].reset_index(drop=True)
-        save_data(df)  # Save to CSV instead of Dataset
-        st.success(f"🗑️ Removed Job Code '{job_code}' from database!")
-        st.dataframe(df.tail())
+    if 'select' in df.columns:
+        selected_indices = df[df['select']].index
+        if not selected_indices.empty:
+            df.drop(selected_indices, inplace=True)
+            df.drop(columns=['select'], inplace=True)
+            df.reset_index(drop=True, inplace=True)
+            save_data(df)
+            st.success("🗑️ Selected job codes have been removed!")
+        else:
+            st.warning("⚠️ Please select at least one job code to remove.")
     else:
-        st.error(f"❌ Job Code '{job_code}' not found in database.")
+        st.error("❌ Selection column not found. Please refresh the app.")
+
+    # Force a re-run to update the displayed dataframe
+    st.rerun()
 
 def reset_form():
     for key in ["job_code", "job_title", "validated_job_code", "stored_job_title"]:
@@ -181,20 +189,34 @@ with tab1:
         col1, col2 = st.columns(2)
         with col1:
             st.button("Add to Database", on_click=add_to_database,
-                        args=(job_code, job_title, st.session_state["siglum"])) # Use st.session_state["siglum"]
+                        args=(job_code, job_title, st.session_state["siglum"]))
         with col2:
             st.button("Reset Form", on_click=reset_form)
 
 with tab2:
-    remove_code = st.text_input("Enter Job Code to Remove",
-                                    max_chars=6,
-                                    placeholder="E.g., AAA123")
-    if remove_code:
-        matching_codes = df[df['Job_Code'].str.startswith(remove_code, na=False)]['Job_Code'].tolist()
-        st.write("Matching Job Codes:", matching_codes)
+    st.subheader("Remove Job Codes")
+    # Add a 'select' column with checkboxes to the DataFrame
+    df['select'] = False
+    edited_df = st.data_editor(df, column_config={"select": st.column_config.CheckboxColumn("Select")}, num_rows="dynamic")
 
-    if st.button("Remove Job Code", key="remove_button"):
-        if remove_code:
-            remove_job_code(remove_code)
+    if st.button("Remove Selected Job Codes"):
+        # Get the rows that are selected
+        selected_df = edited_df[edited_df['select']]
+        if not selected_df.empty:
+            codes_to_remove = selected_df['Job_Code'].tolist()
+            global df
+            df = df[~df['Job_Code'].isin(codes_to_remove)].reset_index(drop=True)
+            save_data(df)
+            st.success(f"🗑️ Successfully removed the selected job codes: {', '.join(codes_to_remove)}")
         else:
-            st.error("❌ Please enter a Job Code to remove.")
+            st.warning("⚠️ Please select at least one row to remove.")
+
+        # Remove the 'select' column after processing
+        if 'select' in df.columns:
+            df.drop(columns=['select'], inplace=True)
+            # Force a re-run to update the displayed dataframe
+            st.rerun()
+
+    # Display the current state of the database
+    st.subheader("Current Job Code Database")
+    st.dataframe(df)
