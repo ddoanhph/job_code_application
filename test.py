@@ -141,7 +141,7 @@ def remove_selected_job_codes():
         save_data(df)
         st.success(f"🗑️ Successfully removed the selected job codes: {', '.join(codes_to_remove)}")
     else:
-        st.warning("⚠️ Please select at least one row to remove.")
+        st.warning("⚠️ Please select at least one job code to remove.")
 
     # Remove the 'select' column after processing
     if 'select' in df.columns:
@@ -200,22 +200,7 @@ with tab2:
     edited_df = st.data_editor(df, column_config={"select": st.column_config.CheckboxColumn("Select")}, num_rows="dynamic")
 
     if st.button("Remove Selected Job Codes"):
-        # Get the rows that are selected
-        selected_df = edited_df[edited_df['select']]
-        if not selected_df.empty:
-            codes_to_remove = selected_df['Job_Code'].tolist()
-            global df
-            df = df[~df['Job_Code'].isin(codes_to_remove)].reset_index(drop=True)
-            save_data(df)
-            st.success(f"🗑️ Successfully removed the selected job codes: {', '.join(codes_to_remove)}")
-        else:
-            st.warning("⚠️ Please select at least one row to remove.")
-
-        # Remove the 'select' column after processing
-        if 'select' in df.columns:
-            df.drop(columns=['select'], inplace=True)
-            # Force a re-run to update the displayed dataframe
-            st.rerun()
+        remove_selected_job_codes() # Call the function here
 
     # Display the current state of the database
     st.subheader("Current Job Code Database")
