@@ -116,8 +116,8 @@ def validate_job_title():
         st.dataframe(df[df['Job_Code'].isin(existing_codes)])
     else:
         st.success(f"🎉 Job Code '{job_code}' and Job Title '{job_title}' are unique!")
-        st.session_state["step"] = "add_to_db"
-        st.session_state["stored_job_title"] = job_title
+    st.session_state["step"] = "add_to_db"
+    st.session_state["stored_job_title"] = job_title
 
 def add_to_database(job_code, job_title, siglum):
     global df
