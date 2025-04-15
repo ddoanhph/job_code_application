@@ -79,7 +79,8 @@ def initialize_session_state():
         "job_code": "",
         "job_title": "",
         "siglum": "AAI",
-        "validated_job_code": ""
+        "validated_job_code": "",
+        "stored_job_title": ""
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -115,7 +116,8 @@ def validate_job_title():
         st.dataframe(df[df['Job_Code'].isin(existing_codes)])
     else:
         st.success(f"🎉 Job Code '{job_code}' and Job Title '{job_title}' are unique!")
-    st.session_state["step"] = "add_to_db"
+        st.session_state["step"] = "add_to_db"
+        st.session_state["stored_job_title"] = job_title
 
 def add_to_database(job_code, job_title, siglum):
     global df
@@ -140,7 +142,7 @@ def remove_job_code(job_code):
         st.error(f"❌ Job Code '{job_code}' not found in database.")
 
 def reset_form():
-    for key in ["job_code", "job_title", "validated_job_code"]:
+    for key in ["job_code", "job_title", "validated_job_code", "stored_job_title"]:
         st.session_state[key] = ""
     st.session_state["step"] = "validate_code"
 
@@ -168,7 +170,7 @@ with tab1:
 
     elif st.session_state["step"] == "add_to_db":
         job_code = st.session_state.get("validated_job_code", "")
-        job_title = st.session_state.get("job_title", "")
+        job_title = st.session_state.get("stored_job_title", "")
 
         st.write(f"Job Code: **{job_code}**")
         st.write(f"Job Title: **{job_title}**")
@@ -179,7 +181,7 @@ with tab1:
         col1, col2 = st.columns(2)
         with col1:
             st.button("Add to Database", on_click=add_to_database,
-                        args=(job_code, job_title, siglum))
+                        args=(job_code, job_title, st.session_state["siglum"])) # Use st.session_state["siglum"]
         with col2:
             st.button("Reset Form", on_click=reset_form)
 
