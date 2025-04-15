@@ -10,7 +10,7 @@ BACKGROUND_COLOR = "#FFFFFF"
 
 st.markdown(f"""
     <style>
-    .stApp {{background-color: {BACKGROUND_COLOR};}}    
+    .stApp {{background-color: {BACKGROUND_COLOR};}}
     h1, h2, h3, h4, h5, h6 {{color: {PRIMARY_COLOR};}}
     .stButton>button {{
         background-color: {PRIMARY_COLOR};
@@ -38,7 +38,7 @@ st.markdown(
         left: 10px;
         bottom: 10px;
         font-size: 18px;
-        color: #0055A4; 
+        color: #0055A4;
         font-family: Arial, sans-serif;
     }}
     .footer-right {{
@@ -46,7 +46,7 @@ st.markdown(
         right: 10px;
         bottom: 10px;
         font-size: 18px;
-        color: #0055A4;  
+        color: #0055A4;
         font-family: Arial, sans-serif;
     }}
     </style>
@@ -78,7 +78,8 @@ def initialize_session_state():
         "step": "validate_code",
         "job_code": "",
         "job_title": "",
-        "siglum": "AAI"
+        "siglum": "AAI",
+        "validated_job_code": ""
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -96,24 +97,17 @@ def validate_job_code():
         st.dataframe(df[df['Job_Code'] == job_code])
     else:
         st.success(f"✅ Job Code '{job_code}' is unique. Please enter the job title.")
-        # Explicitly store job_code in session state
-        st.session_state["job_code"] = job_code
         st.session_state["step"] = "validate_title"
+        st.session_state["validated_job_code"] = job_code
 
 def validate_job_title():
-    # Retrieve job_code from session state explicitly
-    job_code = st.session_state["job_code"].strip()
+    job_code = st.session_state.get("validated_job_code", "")
     job_title = st.session_state["job_title"].strip()
-    
+
     if not job_title:
         st.error("❌ Job Title cannot be empty.")
         return
-        
-    if not job_code:  # Add a check for empty job_code
-        st.error("❌ Job Code is missing. Please start over.")
-        st.session_state["step"] = "validate_code"
-        return
-        
+
     existing_titles = df['Job_Title'].str.strip().str.lower()
     if job_title.lower() in existing_titles.values:
         existing_codes = df[existing_titles == job_title.lower()]['Job_Code'].tolist()
@@ -127,65 +121,76 @@ def add_to_database(job_code, job_title, siglum):
     global df
     new_row = {'Job_Code': job_code, 'Job_Title': job_title, 'Siglum': siglum}
     df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-    
-    save_data(df)
-    
+
+    save_data(df)  # Save to CSV instead of Dataset
+
     st.success(f"🚀 Added Job Code '{job_code}' with Title '{job_title}' to database!")
     st.balloons()
     st.dataframe(df.tail())
     reset_form()
 
+def remove_job_code(job_code):
+    global df
+    if job_code in df['Job_Code'].values:
+        df = df[df['Job_Code'] != job_code].reset_index(drop=True)
+        save_data(df)  # Save to CSV instead of Dataset
+        st.success(f"🗑️ Removed Job Code '{job_code}' from database!")
+        st.dataframe(df.tail())
+    else:
+        st.error(f"❌ Job Code '{job_code}' not found in database.")
+
 def reset_form():
-    for key in ["job_code", "job_title"]:
+    for key in ["job_code", "job_title", "validated_job_code"]:
         st.session_state[key] = ""
     st.session_state["step"] = "validate_code"
 
 # Main UI
 st.title("Job Code & Title Management")
 
+# Tabs for Add and Remove functionality
 tab1, tab2 = st.tabs(["Add Job Code", "Remove Job Code"])
 
 with tab1:
     if st.session_state["step"] == "validate_code":
-        job_code_input = st.text_input("Enter Job Code", key="job_code", 
-                                     max_chars=6, 
-                                     placeholder="E.g., AAA123",
-                                     help="Start typing to see matching job codes")
+        job_code_input = st.text_input("Enter Job Code", key="job_code",
+                                        max_chars=6,
+                                        placeholder="E.g., AAA123",
+                                        help="Start typing to see matching job codes")
         if st.session_state["job_code"]:
             matching_codes = df[df['Job_Code'].str.startswith(st.session_state["job_code"], na=False)]['Job_Code'].tolist()
             st.write("Matching Job Codes:", matching_codes)
         st.button("Validate Job Code", on_click=validate_job_code)
 
     elif st.session_state["step"] == "validate_title":
-        st.write(f"Job Code: **{st.session_state['job_code']}**")
+        st.write(f"Job Code: **{st.session_state.get('validated_job_code', 'N/A')}**")
         st.text_input("Enter Job Title", key="job_title", max_chars=30)
         st.button("Validate Job Title", on_click=validate_job_title)
 
     elif st.session_state["step"] == "add_to_db":
-        job_code = st.session_state["job_code"]
-        job_title = st.session_state["job_title"]
-        
+        job_code = st.session_state.get("validated_job_code", "")
+        job_title = st.session_state.get("job_title", "")
+
         st.write(f"Job Code: **{job_code}**")
         st.write(f"Job Title: **{job_title}**")
-        
-        siglum = st.radio("Select siglum:", options=["AAI", "AHI"], 
-                         horizontal=True, key="siglum")
-        
+
+        siglum = st.radio("Select siglum:", options=["AAI", "AHI"],
+                            horizontal=True, key="siglum")
+
         col1, col2 = st.columns(2)
         with col1:
-            st.button("Add to Database", on_click=add_to_database, 
-                     args=(job_code, job_title, siglum))
+            st.button("Add to Database", on_click=add_to_database,
+                        args=(job_code, job_title, siglum))
         with col2:
             st.button("Reset Form", on_click=reset_form)
 
 with tab2:
-    remove_code = st.text_input("Enter Job Code to Remove", 
-                              max_chars=6,
-                              placeholder="E.g., AAA123")
+    remove_code = st.text_input("Enter Job Code to Remove",
+                                    max_chars=6,
+                                    placeholder="E.g., AAA123")
     if remove_code:
         matching_codes = df[df['Job_Code'].str.startswith(remove_code, na=False)]['Job_Code'].tolist()
         st.write("Matching Job Codes:", matching_codes)
-    
+
     if st.button("Remove Job Code", key="remove_button"):
         if remove_code:
             remove_job_code(remove_code)
