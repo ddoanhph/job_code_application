@@ -65,10 +65,6 @@ def load_data():
     else:
         return pd.DataFrame(columns=['Job_Code', 'Job_Title', 'Siglum'])
 
-# Save data to CSV
-def save_data(df):
-    df.to_csv(DATA_FILE, index=False)
-
 # Initial data load
 df = load_data()
 
@@ -119,8 +115,6 @@ def add_to_database(job_code, job_title, siglum):
     global df
     new_row = {'Job_Code': job_code, 'Job_Title': job_title, 'Siglum': siglum}
     df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-    
-    save_data(df)  # Save to CSV instead of Dataset
     
     st.success(f"🚀 Added Job Code '{job_code}' with Title '{job_title}' to database!")
     st.balloons()
