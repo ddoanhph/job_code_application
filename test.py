@@ -93,9 +93,9 @@ def validate_job_code():
     if len(job_code) < 3:
         st.error("❌ Minimum job code length is 3 characters.")
     elif job_code in df['Job_Code'].values:
-        existing_title = df[df['Job_Code'] == job_code]['Job_Title'].values[0]
-        st.warning(f"⚠️ Job Code '{job_code}' already exists with title: '{existing_title}'")
-        st.dataframe(df[df['Job_Code'] == job_code])
+        existing_title = df[df['Job_Code'] == job_code][['Job_Code', 'Job_Title', 'Siglum']]
+        st.warning(f"⚠️ Job Code '{job_code}' already exists with title: '{existing_title['Job_Title'].values[0]}'")
+        st.dataframe(existing_title)
     else:
         st.success(f"✅ Job Code '{job_code}' is unique. Please enter the job title.")
         st.session_state["step"] = "validate_title"
@@ -111,13 +111,13 @@ def validate_job_title():
 
     existing_titles = df['Job_Title'].str.strip().str.lower()
     if job_title.lower() in existing_titles.values:
-        existing_codes = df[existing_titles == job_title.lower()]['Job_Code'].tolist()
-        st.warning(f"⚠️ Job Title '{job_title}' already exists with code(s): {existing_codes}")
-        st.dataframe(df[df['Job_Code'].isin(existing_codes)])
+        existing_codes = df[existing_titles == job_title.lower()][['Job_Code', 'Job_Title', 'Siglum']]
+        st.warning(f"⚠️ Job Title '{job_title}' already exists with code(s): {existing_codes['Job_Code'].tolist()}")
+        st.dataframe(existing_codes)
     else:
         st.success(f"🎉 Job Code '{job_code}' and Job Title '{job_title}' are unique!")
-    st.session_state["step"] = "add_to_db"
-    st.session_state["stored_job_title"] = job_title
+        st.session_state["step"] = "add_to_db"
+        st.session_state["stored_job_title"] = job_title
 
 def add_to_database(job_code, job_title, siglum):
     global df
@@ -134,7 +134,7 @@ def add_to_database(job_code, job_title, siglum):
 def remove_selected_job_codes():
     global df
     # Get the rows that are selected
-    selected_df = edited_df[edited_df['select']]
+    selected_df = st.session_state["edited_df"][st.session_state["edited_df"]['select']]
     if not selected_df.empty:
         codes_to_remove = selected_df['Job_Code'].tolist()
         df = df[~df['Job_Code'].isin(codes_to_remove)].reset_index(drop=True)
@@ -143,11 +143,8 @@ def remove_selected_job_codes():
     else:
         st.warning("⚠️ Please select at least one job code to remove.")
 
-    # Remove the 'select' column after processing
-    if 'select' in df.columns:
-        df.drop(columns=['select'], inplace=True)
-        # Force a re-run to update the displayed dataframe
-        st.rerun()
+    # Force a re-run to update the displayed dataframe
+    st.rerun()
 
 def reset_form():
     for key in ["job_code", "job_title", "validated_job_code", "stored_job_title"]:
@@ -195,12 +192,24 @@ with tab1:
 
 with tab2:
     st.subheader("Remove Job Codes")
-    # Add a 'select' column with checkboxes to the DataFrame
-    df['select'] = False
-    edited_df = st.data_editor(df, column_config={"select": st.column_config.CheckboxColumn("Select")}, num_rows="dynamic")
+    # Create a copy of the dataframe with the 'select' column only for this tab
+    df_remove = df.copy()
+    df_remove['select'] = False
+    edited_df = st.data_editor(df_remove, key="edited_df", column_config={"select": st.column_config.CheckboxColumn("Select")}, num_rows="dynamic")
 
     if st.button("Remove Selected Job Codes"):
-        remove_selected_job_codes() # Call the function here
+        # Get the rows that are selected from the edited dataframe
+        selected_df = edited_df[edited_df['select']]
+        if not selected_df.empty:
+            codes_to_remove = selected_df['Job_Code'].tolist()
+            global df
+            df = df[~df['Job_Code'].isin(codes_to_remove)].reset_index(drop=True)
+            save_data(df)
+            st.success(f"🗑️ Successfully removed the selected job codes: {', '.join(codes_to_remove)}")
+            # Force a re-run to update the displayed dataframe
+            st.rerun()
+        else:
+            st.warning("⚠️ Please select at least one row to remove.")
 
     # Display the current state of the database
     st.subheader("Current Job Code Database")
