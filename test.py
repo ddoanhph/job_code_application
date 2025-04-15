@@ -107,14 +107,8 @@ def validate_job_title():
     if not job_title:
         st.error("❌ Job Title cannot be empty.")
         return
-
-    existing_titles = df['Job_Title'].str.strip().str.lower()
-    if job_title.lower() in existing_titles.values:
-        existing_codes = df[existing_titles == job_title.lower()]['Job_Code'].tolist()
-        st.warning(f"⚠️ Job Title '{job_title}' already exists with code(s): {existing_codes}")
-        st.dataframe(df[df['Job_Code'].isin(existing_codes)])
     else:
-        st.success(f"🎉 Job Code '{job_code}' and Job Title '{job_title}' are unique!")
+        st.success(f"🎉 Job Title '{job_title}' entered for Job Code '{job_code}'. Please select the siglum and add to the database.")
         st.session_state["step"] = "add_to_db"
 
 def add_to_database(job_code, job_title, siglum):
