@@ -107,8 +107,15 @@ def validate_job_title():
     if not job_title:
         st.error("❌ Job Title cannot be empty.")
         return
+
+    existing_titles = df['Job_Title'].str.strip().str.lower()
+    if job_title.lower() in existing_titles.values:
+        existing_codes = df[existing_titles == job_title.lower()]['Job_Code'].tolist()
+        st.warning(f"⚠️ Job Title '{job_title}' already exists with code(s): {existing_codes}")
+        st.dataframe(df[df['Job_Code'].isin(existing_codes)])
+        st.session_state["step"] = "confirm_add" # Change step to show confirmation options
     else:
-        st.success(f"🎉 Job Title '{job_title}' entered for Job Code '{job_code}'. Please select the siglum and add to the database.")
+        st.success(f"🎉 Job Title '{job_title}' is unique for Job Code '{job_code}'. Please select the siglum and add to the database.")
         st.session_state["step"] = "add_to_db"
 
 def add_to_database(job_code, job_title, siglum):
@@ -159,6 +166,18 @@ with tab1:
         st.write(f"Job Code: **{st.session_state.get('validated_job_code', 'N/A')}**")
         st.text_input("Enter Job Title", key="job_title", max_chars=30)
         st.button("Validate Job Title", on_click=validate_job_title)
+
+    elif st.session_state["step"] == "confirm_add":
+        job_code = st.session_state.get("validated_job_code", "")
+        job_title = st.session_state.get("job_title", "")
+        st.warning(f"⚠️ Job Title '{job_title}' already exists. What would you like to do?")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Add Anyway"):
+                st.session_state["step"] = "add_to_db"
+        with col2:
+            if st.button("Enter a Different Job Title"):
+                st.session_state["step"] = "validate_title"
 
     elif st.session_state["step"] == "add_to_db":
         job_code = st.session_state.get("validated_job_code", "")
